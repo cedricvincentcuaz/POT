@@ -24,22 +24,24 @@ from ot.plot import plot2D_samples_mat
 # 2D data example
 # ---------------
 #
-# We first generate two sets of samples in 2D that 25 and 50
-# samples respectively located on circles. The weights of the samples are
-# uniform.
+# We first generate two sets of samples in 2D of 8 and 16
+# points uniformly separated on circles. The weights of the samples are uniform.
 
 # Problem size
-n1 = 25
-n2 = 50
+n1, n2 = 8, 16
+nbary = 12
 
 # Generate random data
 np.random.seed(0)
 
-x1 = np.random.randn(n1, 2)
-x1 /= np.sqrt(np.sum(x1**2, 1, keepdims=True)) / 2
+r1, r2 = 1, 3
+x1 = r1 * np.array(
+    [(np.cos(2 * i * np.pi / n1), np.sin(2 * i * np.pi / n1)) for i in range(n1)]
+)
 
-x2 = np.random.randn(n2, 2)
-x2 /= np.sqrt(np.sum(x2**2, 1, keepdims=True)) / 4
+x2 = r2 * np.array(
+    [(np.cos(2 * i * np.pi / n2), np.sin(2 * i * np.pi / n2)) for i in range(n2)]
+)
 
 style = {"markeredgecolor": "k"}
 
@@ -66,7 +68,7 @@ lst_unbalanced = [
 lst_solvers = [  # name, param for ot.solve function
     # balanced OT
     ("Exact OT", dict()),
-    ("Entropic Reg. OT", dict(reg=0.1)),
+    ("Entropic Reg. OT", dict(reg=1.0)),
     # unbalanced OT KL
     ("Unbalanced KL No Reg.", dict(unbalanced=0.05)),
     (
@@ -78,7 +80,7 @@ lst_solvers = [  # name, param for ot.solve function
 lst_res = []
 for name, param in lst_solvers:
     print(f"-- name = {name} / param = {param}")
-    res = ot.solve_bary_sample(X_a_list=[x1, x2], n=35, **param)
+    res = ot.solve_bary_sample(X_a_list=[x1, x2], n=nbary, **param)
     lst_res.append(res)
     list_P = [res.list_res[k].plan for k in range(2)]
     print("X:", res.X)
@@ -100,6 +102,8 @@ for name, param in lst_solvers:
 # ----------
 
 pl.figure(2, figsize=(16, 16))
+
+style.update({"markersize": 20})
 
 for i, bname in enumerate(lst_unbalanced):
     for j, rname in enumerate(lst_regs):

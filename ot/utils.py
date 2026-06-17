@@ -1445,7 +1445,8 @@ class BaryResult:
     log : dict
         Dictionary containing potential information about the solver.
     list_res: list of OTResult
-        List of results for the individual OT matching.
+        List of results for the individual OT matching with input distributions considered as
+        sources and the learned barycenter distribution as target.
     status : int or str
         Status of the solver.
 

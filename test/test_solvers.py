@@ -13,7 +13,7 @@ import sys
 import ot
 from ot.bregman import geomloss
 from ot.backend import torch
-from ot.solvers import lst_method_lazy
+from ot.solvers._linear import lst_method_lazy
 
 
 lst_reg = [None, 1]
@@ -1028,7 +1028,7 @@ def test_solve_bary_sample_ValueError(nx):
 
 
 def test_solve_bary_sample_callable_metric(nx):
-    # Test callable metric paths (lines 2496-2551)
+    # Test callable metric paths
     rng = np.random.RandomState(42)
 
     K = 2
@@ -1081,7 +1081,7 @@ def test_solve_bary_sample_callable_metric(nx):
             AssertionError,
             match=f"Backend {str(nx)} is not compatible with ground_bary=None, it must be provided if not using PyTorch backend",
         ):
-            sol_fixed_point = ot.solve_bary_sample(
+            sol_wrong_backend = ot.solve_bary_sample(
                 X_listb,
                 n,
                 a_list=a_listb,
