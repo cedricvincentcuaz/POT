@@ -56,6 +56,11 @@ if sys.platform.startswith("darwin"):
     compile_args.append("-std=c++17")  # Needed for ot/bsp
     sdk_path = subprocess.check_output(["xcrun", "--show-sdk-path"])
     os.environ["CFLAGS"] = '-isysroot "{}"'.format(sdk_path.rstrip().decode("utf-8"))
+    # Add libomp linker flags on macOS
+    if os.path.isfile("/opt/homebrew/opt/libomp/lib/libomp.dylib"):
+        link_args += ["-L/opt/homebrew/opt/libomp/lib", "-lomp"]
+    elif os.path.isfile("/usr/local/opt/libomp/lib/libomp.dylib"):
+        link_args += ["-L/usr/local/opt/libomp/lib", "-lomp"]
 
 
 setup(

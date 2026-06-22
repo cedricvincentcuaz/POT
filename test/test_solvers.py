@@ -913,7 +913,7 @@ def test_solve_bary_sample(nx, reg, reg_type, unbalanced, unbalanced_type, warms
         X_list,
         n,
         a_list=a_list,
-        b_init=b,
+        b=b,
         w=w,
         metric="sqeuclidean",
         reg=reg,
@@ -948,7 +948,7 @@ def test_solve_bary_sample(nx, reg, reg_type, unbalanced, unbalanced_type, warms
         X_listb,
         n,
         a_list=a_listb,
-        b_init=bb,
+        b=bb,
         w=wb,
         metric="sqeuclidean",
         reg=reg,
@@ -994,9 +994,7 @@ def test_solve_bary_sample_NotImplemented(nx, method_params):
     wb, bb = nx.from_numpy(w, b)
 
     with pytest.raises(NotImplementedError):
-        ot.solve_bary_sample(
-            X_listb, n, a_list=a_listb, b_init=bb, w=wb, **method_params
-        )
+        ot.solve_bary_sample(X_listb, n, a_list=a_listb, b=bb, w=wb, **method_params)
 
 
 def test_solve_bary_sample_ValueError(nx):

@@ -14,14 +14,12 @@ from ..backend import get_backend
 
 from ._linear import solve, solve_sample, lst_method_lazy
 
-import numpy as np
-
 
 def _bary_sample_bcd(
     X_a_list,
     X_b_init,
     a_list,
-    b_init,
+    b,
     w,
     metric,
     inner_solver,
@@ -45,8 +43,8 @@ def _bary_sample_bcd(
         Initialization of the barycenter samples.
     a_list : list of array-like, shape (dim_k,)
         List of samples weights in each source distribution
-    b_init : array-like, shape (n_samples_b,)
-        Initialization of the barycenter weights.
+    b : array-like, shape (n_samples_b,)
+        Weights of the barycenter samples.
     w : list of array-like, shape (N,)
         Samples barycentric weights
     metric : str
@@ -71,8 +69,8 @@ def _bary_sample_bcd(
         Print information in the solver
     log : bool
         Log the loss during the iterations
-    nx: backend
-        Backend to use for the computation. Must match<<
+    nx: backend, optional
+        Backend to use for the computation. If provided it must match the backend of the input arrays.
     Returns
     -------
 
@@ -89,12 +87,15 @@ def _bary_sample_bcd(
         See :any:`BaryResult` for more information.
 
     """
+    if nx is None:
+        nx = get_backend(*X_a_list, X_b_init, *a_list, b, w)
 
     X_b = X_b_init
-    b = b_init
+    # inv_b is used to compute the barycenter samples in closed-form
+    # inv_b is fixed in balanced OT, or updated via estimated b in unbalanced settings.
     inv_b = nx.nan_to_num(1.0 / b, nan=1.0, posinf=1.0, neginf=1.0)
 
-    prev_criterion = np.inf
+    prev_criterion = float("inf")
     n_samples = len(X_a_list)
 
     log_ = None
@@ -129,8 +130,10 @@ def _bary_sample_bcd(
 
         # Update the estimated barycenter weights in unbalanced cases
         if update_masses:
-            b = sum([w[k] * list_res[k].plan.sum(axis=0) for k in range(n_samples)])
-            inv_b = nx.nan_to_num(1.0 / b, nan=1.0, posinf=1.0, neginf=1.0)
+            b_estimated = sum(
+                [w[k] * list_res[k].plan.sum(axis=0) for k in range(n_samples)]
+            )
+            inv_b = nx.nan_to_num(1.0 / b_estimated, nan=1.0, posinf=1.0, neginf=1.0)
 
         # Update the barycenter samples
         if metric in ["sqeuclidean", "euclidean"]:
@@ -189,7 +192,7 @@ def solve_bary_sample(
     a_list=None,
     w=None,
     X_b_init=None,
-    b_init=None,
+    b=None,
     metric="sqeuclidean",
     reg=None,
     c=None,
@@ -199,7 +202,7 @@ def solve_bary_sample(
     lazy=False,
     method=None,
     auto_bary_method="L2_barycentric_proj",
-    warmstart=False,
+    warmstart=True,
     stopping_criterion="loss",
     max_iter_bary=1000,
     tol_bary=1e-5,
@@ -241,8 +244,8 @@ def solve_bary_sample(
         Samples barycentric weights (default is uniform)
     X_b_init : array-like, shape (n, dim), optional
         Initialization of the barycenter samples (default is gaussian random sampling)
-    b_init : array-like, shape (n,), optional
-        Initialization of the barycenter weights (default is uniform)
+    b : array-like, shape (n,), optional
+        Barycenter weights (default is uniform)
     metric : str, callable or list of callables optional
         Metric to use for the computation of the cost matrix, by default "sqeuclidean".
         It can be a list of callables (bary, source) of length N (number of source distributions) to use different metrics for each source distribution.
@@ -425,6 +428,10 @@ def solve_bary_sample(
 
     .. [43] Álvarez-Esteban, Pedro C., et al. "A fixed-point approach to barycenters in Wasserstein space." Journal of Mathematical Analysis and Applications 441.2 (2016): 744-762.
 
+    .. [77] Tanguy, Eloi and Delon, Julie and Gozlan, Nathaël (2024). Computing
+        barycenters of Measures for Generic Transport Costs. arXiv preprint
+        2501.04016 (2024)
+
     """
 
     if method is not None and method.lower() in lst_method_lazy:
@@ -441,11 +448,12 @@ def solve_bary_sample(
 
     n_samples = len(X_a_list)
 
-    if (
-        not lazy
-    ):  # default non lazy solver calls ot.solve_sample within _bary_sample_bcd
+    if lazy:
+        raise (NotImplementedError("Barycenter solver with lazy=True not implemented"))
+    else:
+        # default non lazy solver calls ot.solve_sample within _bary_sample_bcd
         # Detect backend
-        nx = get_backend(*X_a_list, X_b_init, b_init, w)
+        nx = get_backend(*X_a_list, X_b_init, b, w)
 
         # check sample weights
         if a_list is None:
@@ -461,7 +469,7 @@ def solve_bary_sample(
 
         # check X_b_init
         if X_b_init is None:
-            rng = np.random.RandomState(random_state)
+            nx.seed(random_state)
             mean_ = nx.concatenate(
                 [nx.mean(X_a_list[k], axis=0) for k in range(n_samples)],
                 axis=0,
@@ -472,19 +480,17 @@ def solve_bary_sample(
                 axis=0,
             )
             std_ = nx.mean(std_, axis=0)
-            X_b_init = rng.normal(
-                loc=mean_,
-                scale=std_,
-                size=(n, X_a_list[0].shape[1]),
+            X_b_init = (
+                std_ * nx.randn(n, X_a_list[0].shape[1], type_as=X_a_list[0]) + mean_
             )
-            X_b_init = nx.from_numpy(X_b_init, type_as=X_a_list[0])
+
         else:
             if (X_b_init.shape[0] != n) or (X_b_init.shape[1] != X_a_list[0].shape[1]):
                 raise ValueError("X_b_init must have shape (n, dim)")
 
-        # check b_init
-        if b_init is None:
-            b_init = nx.ones((n,), type_as=X_a_list[0]) / n
+        # check b
+        if b is None:
+            b = nx.ones((n,), type_as=X_a_list[0]) / n
 
         if callable(metric) or (
             isinstance(metric, list) and all(callable(m) for m in metric)
@@ -507,7 +513,7 @@ def solve_bary_sample(
                     X_b_init,
                     metric,
                     ground_bary=None,
-                    a=b_init,
+                    a=b,
                     numItermax=max_iter_bary,
                     method=auto_bary_method,
                     stopThr=tol_bary,
@@ -516,7 +522,7 @@ def solve_bary_sample(
                 )
                 if auto_bary_method == "L2_barycentric_proj":
                     X_b, log_ = outputs
-                    b = b_init
+
                 elif auto_bary_method == "true_fixed_point":
                     X_b, b, log_ = (
                         outputs  # potentially modify the masses of the barycenter with the true fixed point method
@@ -559,23 +565,20 @@ def solve_bary_sample(
                         metric
                     )
                 )
+
             if warmstart:
-                if reg is None:  # exact OT
-                    warmstart_plan = True
-                    warmstart_potentials = False
-                else:  # regularized OT
-                    # unbalanced AND regularized OT
+                # covers exact OT, regularized OT, unbalanced and regularized OT, but not unbalanced OT without regularization (not implemented)
+                warmstart_plan = False
+                warmstart_potentials = True
+                if reg is not None:
                     if (
                         not isinstance(reg_type, tuple)
-                        and reg_type.lower() in ["kl"]
-                        and unbalanced_type.lower() == "kl"
-                    ):
-                        warmstart_plan = False
-                        warmstart_potentials = True
-
-                    else:
+                        and reg_type.lower() not in ["kl"]
+                        and unbalanced_type.lower() != "kl"
+                    ) or isinstance(reg_type, tuple):
                         warmstart_plan = True
                         warmstart_potentials = False
+
             else:
                 warmstart_plan = False
                 warmstart_potentials = False
@@ -605,7 +608,7 @@ def solve_bary_sample(
                 X_a_list,
                 X_b_init,
                 a_list,
-                b_init,
+                b,
                 w,
                 metric,
                 inner_solver,
@@ -621,6 +624,3 @@ def solve_bary_sample(
             )
 
             return res
-
-    else:
-        raise (NotImplementedError("Barycenter solver with lazy=True not implemented"))

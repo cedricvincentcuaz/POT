@@ -53,35 +53,20 @@ pl.show()
 
 
 # %%
-# Set up parameters for barycenter solvers and solve
+# Set up parameters for balanced OT barycenter solvers and solve
 # ---------------------------------------
 
-lst_regs = [
-    "No Reg.",
-    "Entropic",
-]  # support e.g ["No Reg.", "Entropic", "L2", "Group Lasso + L2"]
-lst_unbalanced = [
-    "Balanced",
-    "Unbalanced KL",
-]  # ["Balanced", "Unb. KL", "Unb. L2", "Unb L1 (partial)"]
-
-lst_solvers = [  # name, param for ot.solve function
-    # balanced OT
+# balanced OT
+lst_balanced_solvers = [  # name, param for ot.solve function
     ("Exact OT", dict()),
     ("Entropic Reg. OT", dict(reg=1.0)),
-    # unbalanced OT KL
-    ("Unbalanced KL No Reg.", dict(unbalanced=0.05)),
-    (
-        "Unbalanced KL with KL Reg.",
-        dict(reg=0.1, unbalanced=0.05, unbalanced_type="kl", reg_type="kl"),
-    ),
 ]
 
-lst_res = []
-for name, param in lst_solvers:
+lst_balanced_res = []
+for name, param in lst_balanced_solvers:
     print(f"-- name = {name} / param = {param}")
     res = ot.solve_bary_sample(X_a_list=[x1, x2], n=nbary, **param)
-    lst_res.append(res)
+    lst_balanced_res.append(res)
     list_P = [res.list_res[k].plan for k in range(2)]
     print("X:", res.X)
     print("loss:", res.value)
@@ -98,25 +83,25 @@ for name, param in lst_solvers:
     )
 
 ##############################################################################
-# Plot distributions and plans
+# Plot distributions and plans for balanced OT barycenter solvers
 # ----------
 
-pl.figure(2, figsize=(16, 16))
 
-style.update({"markersize": 20})
-
-for i, bname in enumerate(lst_unbalanced):
-    for j, rname in enumerate(lst_regs):
-        pl.subplot(len(lst_unbalanced), len(lst_regs), i * len(lst_regs) + j + 1)
-
-        X = lst_res[i * len(lst_regs) + j].X
-        list_P = [lst_res[i * len(lst_regs) + j].list_res[k].plan for k in range(2)]
-        loss = lst_res[i * len(lst_regs) + j].value
+def plot_list_res(lst_res, lst_solvers, fig_num=1, n_cols=2):
+    n_plots = len(lst_res)
+    n_rows = int(np.ceil(n_plots / n_cols))
+    pl.figure(fig_num, figsize=(16, n_rows * 4))
+    style.update({"markersize": 20})
+    for i, (name, param) in enumerate(lst_solvers):
+        pl.subplot(n_rows, n_cols, i + 1)
+        X = lst_res[i].X
+        list_P = [lst_res[i].list_res[k].plan for k in range(2)]
+        loss = lst_res[i].value
 
         plot2D_samples_mat(x1, X, list_P[0])
         plot2D_samples_mat(x2, X, list_P[1])
 
-        if i == 0 and j == 0:  # add labels
+        if i == 0:  # add labels
             pl.plot(x1[:, 0], x1[:, 1], "ob", label="Source distribution 1", **style)
             pl.plot(x2[:, 0], x2[:, 1], "or", label="Source distribution 2", **style)
             pl.plot(X[:, 0], X[:, 1], "og", label="Barycenter distribution", **style)
@@ -126,7 +111,56 @@ for i, bname in enumerate(lst_unbalanced):
             pl.plot(x2[:, 0], x2[:, 1], "or", **style)
             pl.plot(X[:, 0], X[:, 1], "og", **style)
 
-        if i == 0:
-            pl.title(rname)
-        if j == 0:
-            pl.ylabel(bname, fontsize=14)
+        pl.title(name)
+
+
+plot_list_res(lst_balanced_res, lst_balanced_solvers, fig_num=2, n_cols=2)
+
+
+# %%
+# Set up parameters for unbalanced OT barycenter solvers and solve
+# ---------------------------------------
+
+lambda_unbalanced_vals = [1e-2, 1e-1, 1e-0]
+
+# unbalanced OT KL
+lst_unbalanced_solvers = [
+    (
+        r"Unbalanced KL No Reg.\n $\lambda_u$=%s )" % lambda_val,
+        dict(unbalanced=lambda_val),
+    )
+    for lambda_val in lambda_unbalanced_vals
+] + [
+    (
+        r"Unbalanced KL with KL Reg.\n $\lambda_u$=%s, $\lambda_{ent}$=%s)"
+        % (lambda_val, 0.1),
+        dict(reg=0.1, unbalanced=lambda_val, unbalanced_type="kl", reg_type="kl"),
+    )
+    for lambda_val in lambda_unbalanced_vals
+]
+
+lst_unbalanced_res = []
+for name, param in lst_unbalanced_solvers:
+    print(f"-- name = {name} / param = {param}")
+    res = ot.solve_bary_sample(X_a_list=[x1, x2], n=nbary, **param)
+    lst_unbalanced_res.append(res)
+    list_P = [res.list_res[k].plan for k in range(2)]
+    print("X:", res.X)
+    print("loss:", res.value)
+    print("loss:", res.log)
+    print(
+        "marginals OT 1:",
+        res.list_res[0].plan.sum(axis=1),
+        res.list_res[0].plan.sum(axis=0),
+    )
+    print(
+        "marginals OT 2:",
+        res.list_res[1].plan.sum(axis=1),
+        res.list_res[1].plan.sum(axis=0),
+    )
+
+##############################################################################
+# Plot distributions and plans for unbalanced OT barycenter solvers
+# ----------
+
+plot_list_res(lst_unbalanced_res, lst_unbalanced_solvers, fig_num=3, n_cols=3)
