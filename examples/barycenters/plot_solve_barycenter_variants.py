@@ -87,7 +87,7 @@ for name, param in lst_balanced_solvers:
 # ----------
 
 
-def plot_list_res(lst_res, lst_solvers, fig_num=1, n_cols=2):
+def plot_list_res(lst_res, lst_solvers, fig_num=1, n_cols=2, mass_difference=False):
     n_plots = len(lst_res)
     n_rows = int(np.ceil(n_plots / n_cols))
     pl.figure(fig_num, figsize=(16, n_rows * 4))
@@ -121,19 +121,19 @@ plot_list_res(lst_balanced_res, lst_balanced_solvers, fig_num=2, n_cols=2)
 # Set up parameters for unbalanced OT barycenter solvers and solve
 # ---------------------------------------
 
-lambda_unbalanced_vals = [1e-2, 1e-1, 1e-0]
+lambda_unbalanced_vals = [1, 5, 10]
 
 # unbalanced OT KL
 lst_unbalanced_solvers = [
     (
-        r"Unbalanced KL No Reg.\n $\lambda_u$=%s )" % lambda_val,
+        "Unbalanced KL No Reg \n" + r"$\lambda_u$=%s" % lambda_val,
         dict(unbalanced=lambda_val),
     )
     for lambda_val in lambda_unbalanced_vals
 ] + [
     (
-        r"Unbalanced KL with KL Reg.\n $\lambda_u$=%s, $\lambda_{ent}$=%s)"
-        % (lambda_val, 0.1),
+        r"Unbalanced KL with KL Reg \n"
+        + r"$\lambda_u$=%s, $\lambda_{ent}$=%s" % (lambda_val, 0.1),
         dict(reg=0.1, unbalanced=lambda_val, unbalanced_type="kl", reg_type="kl"),
     )
     for lambda_val in lambda_unbalanced_vals
