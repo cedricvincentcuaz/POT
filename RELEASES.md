@@ -1,6 +1,6 @@
 # Releases
 
-## 0.9.7.dev0
+## 0.9.7.dev0## 0.9.7.dev0
 
 This new release adds support for sparse cost matrices and a new lazy EMD solver that computes distances on-the-fly from coordinates, reducing memory usage from O(n×m) to O(n+m). Both implementations are backend-agnostic and preserve gradient computation for automatic differentiation.
 
@@ -22,17 +22,19 @@ This new release adds support for sparse cost matrices and a new lazy EMD solver
 - Add "BSP-OT: Sparse transport plans between discrete measures in loglinear time" (PR #768)
 - Added UOT1D with Frank-Wolfe in `ot.unbalanced.uot_1d` (PR #765)
 - Add Sliced UOT and Unbalanced Sliced OT in `ot/unbalanced/_sliced.py` (PR #765)
-- Add cost functions between linear operators following  
-  [A Spectral-Grassmann Wasserstein metric for operator representations of dynamical systems](https://arxiv.org/pdf/2509.24920),  
-  implemented in `ot.sgot` (PR #792)
 - Add `ot.utils.DataScaler` class for backend-aware joint normalization of input distributions, with sklearn-compatible `fit`/`transform`/`fit_transform` API and   support for `'standard'`, `'minmax'`, and `'l2'` methods (PR #808)
 - Add `ot.utils.apply_scaler` helper that dispatches preprocessing to a scaler object,
   a callable, or a no-op (PR #808)
 - Add optional `scaler` parameter to `sliced_wasserstein_distance` and  `max_sliced_wasserstein_distance` (PR #808)
 - Add a numerically stable log-domain solver for entropic partial Wasserstein, selectable via the new `method` parameter of `entropic_partial_wasserstein` (`method='sinkhorn_log'`) or directly through `entropic_partial_wasserstein_logscale` (Issue #723)
-- Build wheels on ubuntu ARM to avoid QEMU emulation (PR #818)
+- Add cost functions between linear operators following  
+  [A Spectral-Grassmann Wasserstein metric for operator representations of dynamical systems](https://arxiv.org/pdf/2509.24920),  
+  implemented in `ot.sgot` (PR #792)
+- Add batch FUGW loss to `ot.batch` and fix issues in some default parameters in the batch module (PR #775)
 - Wrapper for barycenter solvers with free support `ot.solvers.bary_free_support` (PR #730)
+- Build wheels on ubuntu ARM to avoid QEMU emulation (PR #818)
 - Add new methods to compute the linear transport map and the related 2-Wasserstein distance betweeen high-dimensional (HD) Gaussian distributions as described in [88], implemented in  `ot.gaussian.bures_wasserstein_mapping_hd` and `ot.gaussian.bures_wasserstein_distance_hd`, respectively. Two additional methods estimate the same quantities from the source and destination observed data and are implemented in `ot.gaussian.empirical_bures_wasserstein_mapping_hd` and `ot.gaussian.empirical_bures_wasserstein_distance_hd`, respectively (PR #814)   
+
 
 #### Closed issues
 
@@ -52,6 +54,8 @@ This new release adds support for sparse cost matrices and a new lazy EMD solver
 - Debug Debug linux test core dump (PR #815)
 - Fix entropic regularization in `gcg`(PR #817, Issue #758)
 - Fix documentation build on master with submodules (PR #818)
+- Fix failing test for unbalanced solver with generic regularization (PR #824)
+
 
 ## 0.9.6.post1
 
